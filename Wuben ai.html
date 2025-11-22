@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WUBEN AI Live Chat</title>
+<style>
+body {
+  margin:0;
+  font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background:#000;
+  color:#fff;
+  display:flex;
+  height:100vh;
+  overflow:hidden;
+}
+.sidebar{
+  width:80px;
+  background:#0c0c0c;
+  padding:20px 0;
+  border-right:1px solid #1a1a1a;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:30px;
+}
+.sidebar .icon{
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:#1a1a1a;
+  transition:0.3s;
+}
+.sidebar .icon:hover{
+  box-shadow:0 0 10px #0ff;
+  transform:scale(1.1);
+}
+.content{
+  flex:1;
+  padding:50px 40px 20px 40px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+h1{
+  font-size:46px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+h1 span{color:#0ff;}
+p.subtitle{
+  font-size:16px;
+  color:#bbb;
+  margin-bottom:25px;
+}
+.prompts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px;
+  margin-bottom:20px;
+}
+.card{
+  background:#111;
+  border:1px solid #222;
+  padding:18px;
+  width:250px;
+  border-radius:14px;
+  cursor:pointer;
+  transition:0.3s;
+  text-align:center;
+  font-weight:500;
+}
+.card:hover{
+  background:#0ff1;
+  border:1px solid #0ff;
+  color:#000;
+}
+.chat-area{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow-y:auto;
+  padding-bottom:120px;
+  scroll-behavior:smooth;
+}
+.bubble{
+  max-width:70%;
+  padding:12px 18px;
+  border-radius:22px;
+  word-wrap:break-word;
+  animation:fadeIn 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,255,255,0.1);
+}
+.bubble.user{
+  background:#0ff3;
+  color:#000;
+  align-self:flex-end;
+  border-bottom-right-radius:4px;
+}
+.bubble.ai{
+  background:#222a;
+  color:#fff;
+  align-self:flex-start;
+  border-bottom-left-radius:4px;
+  position:relative;
+}
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(5px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.typing-dot{
+  width:8px;
+  height:8px;
+  background:#0ff;
+  border-radius:50%;
+  display:inline-block;
+  margin-right:3px;
+  animation:blink 1.4s infinite both;
+}
+.typing-dot:nth-child(1){animation-delay:0s;}
+.typing-dot:nth-child(2){animation-delay:0.2s;}
+.typing-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes blink{
+  0%,80%,100%{opacity:0;}
+  40%{opacity:1;}
+}
+.chat-box{
+  background:#111;
+  border:1px solid #222;
+  padding:15px 20px;
+  border-radius:20px;
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  width:70%;
+  display:flex;
+  gap:15px;
+  align-items:center;
+}
+.chat-box input{
+  flex:1;
+  background:none;
+  border:none;
+  outline:none;
+  color:#fff;
+  font-size:16px;
+}
+.send-btn, .voice-btn{
+  background:#0ff;
+  border:none;
+  padding:10px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  font-weight:bold;
+  color:#000;
+  transition:0.3s;
+}
+.send-btn:hover, .voice-btn:hover{opacity:0.8;}
+.voice-btn.recording{
+  background:red;
+  color:#fff;
+  animation:pulse 1s infinite;
+}
+@keyframes pulse{
+  0%{box-shadow:0 0 5px red;}
+  50%{box-shadow:0 0 15px red;}
+  100%{box-shadow:0 0 5px red;}
+}
+@media(max-width:900px){
+  .content{padding:30px;}
+  .chat-box{width:90%;}
+  .card{width:45%;}
+}
+@media(max-width:500px){.card{width:100%;}}
+.listening-indicator{
+  position:fixed;
+  bottom:100px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#0ff1;
+  color:#000;
+  padding:6px 14px;
+  border-radius:12px;
+  font-size:14px;
+  display:none;
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="icon"></div>
+  <div class="icon"></div>
+  <div class="icon"></div>
+  <div class="icon"></div>
+</div>
+
+<div class="content">
+<h1>Welcome to <span>WUBEN AI</span></h1>
+<p class="subtitle">The AI for THE BENEDICTS HOSPITAL</p>
+
+<div class="prompts">
+  <div class="card" onclick="sendPrompt('Book an appointment')">Book an appointment</div>
+  <div class="card" onclick="sendPrompt('Ask Wuben about your symptoms')">Ask Wuben about your symptoms</div>
+  <div class="card" onclick="sendPrompt('Get department recommendations')">Get department recommendations</div>
+  <div class="card" onclick="sendPrompt('Understand hospital services')">Understand hospital services</div>
+</div>
+
+<div class="chat-area" id="chatArea"></div>
+</div>
+
+<div class="listening-indicator" id="listeningIndicator">🎙️ AI Listening...</div>
+
+<div class="chat-box">
+  <input type="text" id="userInput" placeholder="Talk to WUBEN AI..." />
+  <button class="voice-btn" id="voiceBtn">🎤</button>
+  <button class="send-btn" onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+const chatArea = document.getElementById("chatArea");
+const userInput = document.getElementById("userInput");
+const voiceBtn = document.getElementById("voiceBtn");
+const listeningIndicator = document.getElementById("listeningIndicator");
+
+// Replace with your n8n webhook URL
+const WEBHOOK_URL = "https://benedictdemo.app.n8n.cloud/webhook/3d80d491-48a5-488c-b40d-73c1441038d6/chat";
+
+function scrollChat(){chatArea.scrollTop = chatArea.scrollHeight;}
+function addBubble(sender){
+  const bubble = document.createElement("div");
+  bubble.classList.add("bubble", sender);
+  chatArea.appendChild(bubble);
+  scrollChat();
+  return bubble;
+}
+function addTypingDots(bubble){
+  const dots = document.createElement("span");
+  dots.classList.add("typing-dots");
+  dots.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+  bubble.appendChild(dots);
+  return dots;
+}
+async function streamText(bubble, text, dots){
+  bubble.textContent = "";
+  if(dots) bubble.appendChild(dots);
+  for(let i=0;i<text.length;i++){
+    bubble.textContent += text[i];
+    if(dots) bubble.appendChild(dots);
+    scrollChat();
+    await new Promise(r => setTimeout(r, 25));
+  }
+  if(dots) bubble.removeChild(dots);
+}
+
+async function sendMessage(messageText=null){
+  const message = messageText || userInput.value.trim();
+  if(!message) return;
+  addBubble("user").textContent = message;
+  userInput.value = "";
+  const aiBubble = addBubble("ai");
+  const typingDots = addTypingDots(aiBubble);
+
+  try {
+    const response = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ chatInput: message })
+    });
+    if(!response.ok) throw new Error(`Server returned ${response.status}`);
+    const data = await response.json();
+    const reply = data.reply || data.output || "No reply from AI";
+
+    await streamText(aiBubble, reply, typingDots);
+
+    const utter = new SpeechSynthesisUtterance(reply);
+    utter.lang = 'en-US';
+    speechSynthesis.speak(utter);
+  } catch(err) {
+    console.error("Error calling AI:", err);
+    if(aiBubble.contains(typingDots)) aiBubble.removeChild(typingDots);
+    aiBubble.textContent = "⚠️ AI not responding. Please check workflow or CORS.";
+  }
+}
+
+function sendPrompt(promptText){userInput.value = promptText; sendMessage();}
+userInput.addEventListener("keydown", e => {if(e.key==="Enter") sendMessage();});
+
+let recognition;
+if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = (event) => { sendMessage(event.results[0][0].transcript); };
+  recognition.onstart = () => { voiceBtn.classList.add("recording"); listeningIndicator.style.display = "block"; }
+  recognition.onend = () => { voiceBtn.classList.remove("recording"); listeningIndicator.style.display = "none"; }
+} else {
+  voiceBtn.disabled = true;
+  voiceBtn.title = "Voice not supported";
+}
+voiceBtn.addEventListener("click", () => {
+  if(!recognition) return;
+  recognition.start();
+});
+</script>
+
+</body>
+</html>

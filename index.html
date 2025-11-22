@@ -224,9 +224,7 @@ const chatArea = document.getElementById("chatArea");
 const userInput = document.getElementById("userInput");
 const voiceBtn = document.getElementById("voiceBtn");
 const listeningIndicator = document.getElementById("listeningIndicator");
-
-// ✅ Use Vercel API as proxy
-const WEBHOOK_URL = "/api/chat";
+const WEBHOOK_URL = "https://benedictdemo.app.n8n.cloud/webhook/3d80d491-48a5-488c-b40d-73c1441038d6/chat";
 
 function scrollChat(){chatArea.scrollTop=chatArea.scrollHeight;}
 function addBubble(sender){
@@ -269,9 +267,11 @@ async function sendMessage(messageText=null){
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({ chatInput: message })
     });
+
     if(!response.ok) throw new Error(`Server returned ${response.status}`);
     const data = await response.json();
     const reply = data.reply || data.output || "No reply from AI";
+
     await streamText(aiBubble, reply, typingDots);
 
     // TTS
@@ -282,7 +282,7 @@ async function sendMessage(messageText=null){
   }catch(err){
     console.error(err);
     if(aiBubble.contains(typingDots)) aiBubble.removeChild(typingDots);
-    aiBubble.textContent="⚠️ AI not responding. Please check workflow.";
+    aiBubble.textContent = "⚠️ AI not responding. Check network or workflow.";
   }
 }
 

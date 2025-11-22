@@ -202,10 +202,10 @@ p.subtitle{
 <p class="subtitle">The AI for THE BENEDICTS HOSPITAL</p>
 
 <div class="prompts">
-  <div class="card">Book an appointment</div>
-  <div class="card">Ask Wuben about your symptoms</div>
-  <div class="card">Get department recommendations</div>
-  <div class="card">Understand hospital services</div>
+  <div class="card" onclick="sendPrompt('Book an appointment')">Book an appointment</div>
+  <div class="card" onclick="sendPrompt('Ask Wuben about your symptoms')">Ask Wuben about your symptoms</div>
+  <div class="card" onclick="sendPrompt('Get department recommendations')">Get department recommendations</div>
+  <div class="card" onclick="sendPrompt('Understand hospital services')">Understand hospital services</div>
 </div>
 
 <div class="chat-area" id="chatArea"></div>
@@ -216,114 +216,91 @@ p.subtitle{
 <div class="chat-box">
   <input type="text" id="userInput" placeholder="Talk to WUBEN AI..." />
   <button class="voice-btn" id="voiceBtn">🎤</button>
-  <button class="send-btn" id="sendBtn">Send</button>
+  <button class="send-btn" onclick="sendMessage()">Send</button>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+const chatArea = document.getElementById("chatArea");
+const userInput = document.getElementById("userInput");
+const voiceBtn = document.getElementById("voiceBtn");
+const listeningIndicator = document.getElementById("listeningIndicator");
 
-  const chatArea = document.getElementById("chatArea");
-  const userInput = document.getElementById("userInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const voiceBtn = document.getElementById("voiceBtn");
-  const listeningIndicator = document.getElementById("listeningIndicator");
+// ✅ Use Vercel API as proxy
+const WEBHOOK_URL = "/api/chat";
 
-  // n8n Webhook URL
-  const WEBHOOK_URL = "https://benedictdemo.app.n8n.cloud/webhook/3d80d491-48a5-488c-b40d-73c1441038d6/chat";
-
-  function scrollChat(){ chatArea.scrollTop = chatArea.scrollHeight; }
-  
-  function addBubble(sender){
-    const bubble = document.createElement("div");
-    bubble.classList.add("bubble", sender);
-    chatArea.appendChild(bubble);
-    scrollChat();
-    return bubble;
-  }
-
-  function addTypingDots(bubble){
-    const dots = document.createElement("span");
-    dots.classList.add("typing-dot");
-    dots.innerHTML='<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
-    bubble.appendChild(dots);
-    return dots;
-  }
-
-  async function streamText(bubble, text, dots){
-    bubble.textContent = "";
+function scrollChat(){chatArea.scrollTop=chatArea.scrollHeight;}
+function addBubble(sender){
+  const bubble=document.createElement("div");
+  bubble.classList.add("bubble",sender);
+  chatArea.appendChild(bubble);
+  scrollChat();
+  return bubble;
+}
+function addTypingDots(bubble){
+  const dots=document.createElement("span");
+  dots.classList.add("typing-dots");
+  dots.innerHTML='<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+  bubble.appendChild(dots);
+  return dots;
+}
+async function streamText(bubble,text,dots){
+  bubble.textContent="";
+  if(dots) bubble.appendChild(dots);
+  for(let i=0;i<text.length;i++){
+    bubble.textContent+=text[i];
     if(dots) bubble.appendChild(dots);
-    for(let i=0;i<text.length;i++){
-      bubble.textContent += text[i];
-      if(dots) bubble.appendChild(dots);
-      scrollChat();
-      await new Promise(r=>setTimeout(r,25));
-    }
-    if(dots) bubble.removeChild(dots);
+    scrollChat();
+    await new Promise(r=>setTimeout(r,25));
   }
+  if(dots) bubble.removeChild(dots);
+}
 
-  async function sendMessage(messageText=null){
-    const message = messageText || userInput.value.trim();
-    if(!message) return;
-    addBubble("user").textContent = message;
-    userInput.value = "";
-    const aiBubble = addBubble("ai");
-    const typingDots = addTypingDots(aiBubble);
+async function sendMessage(messageText=null){
+  const message = messageText || userInput.value.trim();
+  if(!message) return;
+  addBubble("user").textContent = message;
+  userInput.value = "";
+  const aiBubble = addBubble("ai");
+  const typingDots = addTypingDots(aiBubble);
 
-    try{
-      const response = await fetch(WEBHOOK_URL, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ chatInput: message })
-      });
-      if(!response.ok) throw new Error("Server error " + response.status);
-      const data = await response.json();
-      const reply = data.reply || data.output || "No reply from AI";
-      await streamText(aiBubble, reply, typingDots);
+  try{
+    const response = await fetch(WEBHOOK_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ chatInput: message })
+    });
+    if(!response.ok) throw new Error(`Server returned ${response.status}`);
+    const data = await response.json();
+    const reply = data.reply || data.output || "No reply from AI";
+    await streamText(aiBubble, reply, typingDots);
 
-      // TTS
-      const utter = new SpeechSynthesisUtterance(reply);
-      utter.lang='en-US';
-      speechSynthesis.speak(utter);
+    // TTS
+    const utter = new SpeechSynthesisUtterance(reply);
+    utter.lang='en-US';
+    speechSynthesis.speak(utter);
 
-    }catch(err){
-      if(aiBubble.contains(typingDots)) aiBubble.removeChild(typingDots);
-      aiBubble.textContent = "⚠️ AI not responding. Please check workflow or CORS.";
-      console.error(err);
-    }
+  }catch(err){
+    console.error(err);
+    if(aiBubble.contains(typingDots)) aiBubble.removeChild(typingDots);
+    aiBubble.textContent="⚠️ AI not responding. Please check workflow.";
   }
+}
 
-  function sendPrompt(text){
-    userInput.value = text;
-    sendMessage();
-  }
+function sendPrompt(promptText){userInput.value=promptText; sendMessage();}
+userInput.addEventListener("keydown",e=>{if(e.key==="Enter") sendMessage();});
 
-  sendBtn.addEventListener("click", sendMessage);
-  userInput.addEventListener("keydown", e => { if(e.key==="Enter") sendMessage(); });
-
-  document.querySelectorAll(".card").forEach(card=>{
-    card.addEventListener("click", ()=>sendPrompt(card.textContent));
-  });
-
-  // Voice recognition
-  let recognition;
-  if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.lang='en-US';
-    recognition.continuous=false;
-    recognition.interimResults=false;
-    recognition.onresult = (event)=>{ sendMessage(event.results[0][0].transcript); };
-    recognition.onstart = ()=>{ voiceBtn.classList.add("recording"); listeningIndicator.style.display="block"; };
-    recognition.onend = ()=>{ voiceBtn.classList.remove("recording"); listeningIndicator.style.display="none"; };
-  } else { voiceBtn.disabled=true; voiceBtn.title="Voice not supported"; }
-
-  voiceBtn.addEventListener("click", ()=>{
-    if(!recognition) return;
-    if(voiceBtn.classList.contains("recording")) recognition.stop();
-    else recognition.start();
-  });
-
-});
+let recognition;
+if('webkitSpeechRecognition'in window || 'SpeechRecognition' in window){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang='en-US';
+  recognition.continuous=false;
+  recognition.interimResults=false;
+  recognition.onresult=(event)=>{sendMessage(event.results[0][0].transcript);};
+  recognition.onstart=()=>{voiceBtn.classList.add("recording"); listeningIndicator.style.display="block";}
+  recognition.onend=()=>{voiceBtn.classList.remove("recording"); listeningIndicator.style.display="none";}
+}else{voiceBtn.disabled=true; voiceBtn.title="Voice not supported";}
+voiceBtn.addEventListener("click",()=>{if(!recognition) recognition.start(); else recognition.stop();});
 </script>
 
 </body>

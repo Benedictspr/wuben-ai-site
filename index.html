@@ -75,7 +75,7 @@ const voiceBtn = document.getElementById("voiceBtn");
 const listeningIndicator = document.getElementById("listeningIndicator");
 
 // Your n8n workflow webhook URL
-const WEBHOOK_URL = "https://benedictdemo.app.n8n.cloud/webhook/3d80d491-48a5-488c-b40d-73c1441038d6/chat";
+const WEBHOOK_URL = "const WEBHOOK_URL = "https://your-vercel-project.vercel.app/api/proxy";
 
 function scrollChat(){chatArea.scrollTop=chatArea.scrollHeight;}
 function addBubble(sender){const bubble=document.createElement("div");bubble.classList.add("bubble",sender);chatArea.appendChild(bubble);scrollChat();return bubble;}
@@ -131,3 +131,4 @@ voiceBtn.addEventListener("click",()=>{if(!recognition) recognition.start(); els
 
 </body>
 </html>
+
